@@ -28,7 +28,7 @@ def test():
     from models import Darknet19Encoder, Darknet19Decoder
 
     inputShape = (256, 256, 3)
-    batchSize = 10
+    batchSize = 20
     latentSize = 100
 
     img = load_img(os.path.join('..','images', 'img.jpg'), target_size=inputShape[:-1])
