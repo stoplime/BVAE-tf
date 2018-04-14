@@ -9,8 +9,33 @@ THE UNLICENSE
 import tensorflow as tf
 from tensorflow.python.keras.layers import (InputLayer, Conv2D, Conv2DTranspose, 
             BatchNormalization, LeakyReLU, MaxPool2D, UpSampling2D, 
-            Reshape, GlobalAveragePooling2D, Layer)
+            Reshape, GlobalAveragePooling2D, Layer, add)
 from tensorflow.python.keras import backend as K
+
+class ResConvBnLRelu(object):
+    def __init__(self, filters, kernelSize, strides=1):
+        self.filters = filters
+        self.kernelSize = kernelSize
+        self.strides = strides
+    # return conv + bn + leaky_relu model
+    def __call__(self, net):
+        shortcut = net
+
+        net = Conv2D(self.filters/4, 1, strides=self.strides, padding='same')(net)
+        net = BatchNormalization()(net)
+
+        net = Conv2D(self.filters/4, self.kernelSize, strides=self.strides, padding='same')(net)
+        net = BatchNormalization()(net)
+
+        net = Conv2D(self.filters, 1, strides=self.strides, padding='same')(net)
+        net = BatchNormalization()(net)
+
+        shortcut = Conv2D(self.filters, 1, strides=self.strides, padding='same')(shortcut)
+        shortcut = BatchNormalization()(shortcut)        
+
+        net = add([shortcut, net])
+        net = LeakyReLU()(net)
+        return net
 
 class ConvBnLRelu(object):
     def __init__(self, filters, kernelSize, strides=1):
