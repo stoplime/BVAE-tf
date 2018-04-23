@@ -49,6 +49,18 @@ class ConvBnLRelu(object):
         net = LeakyReLU()(net)
         return net
 
+class TransConvBnLRelu(object):
+    def __init__(self, filters, kernelSize, strides=1):
+        self.filters = filters
+        self.kernelSize = kernelSize
+        self.strides = strides
+    # return conv + bn + leaky_relu model
+    def __call__(self, net):
+        net = Conv2DTranspose(self.filters, self.kernelSize, strides=self.strides, padding='same')(net)
+        net = BatchNormalization()(net)
+        net = LeakyReLU()(net)
+        return net
+
 class SampleLayer(Layer):
     '''
     Keras Layer to grab a random sample from a distribution (by multiplication)
