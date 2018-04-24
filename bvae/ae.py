@@ -72,31 +72,35 @@ def test2():
     inputShape = (32, 32, 3)
     batchSize = 32
     latentSize = 128
-    episodes = 1000
+    episodes = 10000
     verbose = 1
 
-    loadFolder = 'imageNet1'
+    loadFolder = 'imageNet2'
     loadFile = 'PtBetaEncoder-32px-128l-1000e'
     load = False
-    saveFolder = 'imageNet2'
-    saveFile = 'PtBetaEncoder-32px-128l-1000e'
+    saveFolder = 'imageNet4'
+    saveFile = 'PtDarkNet19-bvae-16-128l-32c-32px-10000e'
     save = True
     # C:\Users\slani\Documents\GitHub\montazuma\dataset\0000001.png
     # C:\Users\slani\Documents\GitHub\montazuma\dataset\1281149.png
     dataPath = os.path.join('..', '..', 'dataset', 'train_32x32')
+    loadFolderPath = os.path.join('..', 'save', loadFolder)
     saveFolderPath = os.path.join('..', 'save', saveFolder)
-    loadPath = os.path.join('..', 'save', loadFolder, loadFile + '.h5')
+    loadPath = os.path.join(loadFolderPath, loadFile + '.h5')
     savePath = os.path.join(saveFolderPath, saveFile + '.h5')
 
     if not os.path.exists(saveFolderPath):
         os.makedirs(saveFolderPath)
 
     # This is how you build the autoencoder
-    encoder = models.BetaEncoder(inputShape, batchSize, latentSize, 'bvae', beta=128, capacity=15, randomSample=True)
-    decoder = models.BetaDecoder(inputShape, batchSize, latentSize)
+    encoder = models.Darknet19Encoder(inputShape, batchSize, latentSize, 'bvae', beta=16, capacity=32, randomSample=True)
+    decoder = models.Darknet19Decoder(inputShape, batchSize, latentSize)
     bvae = AutoEncoder(encoder, decoder)
 
     bvae.ae.compile(optimizer='adam', loss='mean_absolute_error')
+
+    if load:
+        bvae.ae.load_weights(loadPath)
 
     for epoch in range(episodes):
         imgs = []
