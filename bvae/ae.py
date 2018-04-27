@@ -78,8 +78,8 @@ def test2():
     loadFolder = 'imageNet2'
     loadFile = 'PtBetaEncoder-32px-128l-1000e'
     load = False
-    saveFolder = 'Dsprite1'
-    saveFile = 'PtDarkNet19-bvae-100-10l-20c-64px-10000e'
+    saveFolder = 'Dsprite3_2'
+    saveFile = 'PtBetaEncoder-bvae-0_1-10l-20c-64px-10000e'
     save = True
 
     useDsprites = True
@@ -98,7 +98,6 @@ def test2():
         print("loading images")
         data = np.load(os.path.join(dataPath, "dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz"))
         dataImages = data['imgs']
-        dataImages = np.swapaxes(dataImages,0,2)
         print("dataImages.shape", dataImages.shape)
         print("Images Aquired")
     
@@ -106,8 +105,8 @@ def test2():
         os.makedirs(saveFolderPath)
 
     # This is how you build the autoencoder
-    encoder = models.Darknet19Encoder(inputShape, batchSize, latentSize, 'bvae', beta=100, capacity=20, randomSample=True)
-    decoder = models.Darknet19Decoder(inputShape, batchSize, latentSize)
+    encoder = models.BetaEncoder(inputShape, batchSize, latentSize, 'bvae', beta=0.1, capacity=20, randomSample=True)
+    decoder = models.BetaDecoder(inputShape, batchSize, latentSize)
     bvae = AutoEncoder(encoder, decoder)
 
     bvae.ae.compile(optimizer='adam', loss='mean_absolute_error')
@@ -120,7 +119,7 @@ def test2():
         for _batch in range(batchSize):
             if useDsprites:
                 imageNum = random.randrange(1, 737280)
-                img = dataImages[:,:,imageNum]
+                img = dataImages[imageNum]
                 img = img*255
                 imgs.append(img)
             else:
