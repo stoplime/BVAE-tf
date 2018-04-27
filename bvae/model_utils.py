@@ -8,7 +8,7 @@ THE UNLICENSE
 '''
 import tensorflow as tf
 from tensorflow.python.keras.layers import (InputLayer, Conv2D, Conv2DTranspose, 
-            BatchNormalization, LeakyReLU, MaxPool2D, UpSampling2D, 
+            BatchNormalization, LeakyReLU, MaxPool2D, UpSampling2D, Dense,
             Reshape, GlobalAveragePooling2D, Layer, add)
 from tensorflow.python.keras import backend as K
 
@@ -59,6 +59,17 @@ class TransConvBnLRelu(object):
         net = Conv2DTranspose(self.filters, self.kernelSize, strides=self.strides, padding='same')(net)
         net = BatchNormalization()(net)
         net = LeakyReLU()(net)
+        return net
+
+class FullyConnectedRelu(object):
+    def __init__(self, filters, linear=False):
+        self.filters = filters
+        self.linear = linear
+    # return fc + leaky_relu model
+    def __call__(self, net):
+        net = Dense(self.filters)(net)
+        if not self.linear:
+            net = LeakyReLU()(net)
         return net
 
 class SampleLayer(Layer):

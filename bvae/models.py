@@ -9,11 +9,11 @@ THE UNLICENSE
 import tensorflow as tf
 from tensorflow.python.keras import Input
 from tensorflow.python.keras.layers import (InputLayer, Conv2D, Conv2DTranspose,
-            BatchNormalization, LeakyReLU, MaxPool2D, UpSampling2D,
+            BatchNormalization, LeakyReLU, MaxPool2D, UpSampling2D, Dense,
             Reshape, GlobalAveragePooling2D)
 from tensorflow.python.keras.models import Model
 
-from model_utils import ResConvBnLRelu, ConvBnLRelu, TransConvBnLRelu, SampleLayer
+from model_utils import ResConvBnLRelu, ConvBnLRelu, TransConvBnLRelu, SampleLayer, FullyConnectedRelu
 import math
 
 class Architecture(object):
@@ -40,6 +40,86 @@ class Architecture(object):
 
     def Build(self):
         raise NotImplementedError('architecture must implement Build function')
+
+class FCEncoder(Architecture):
+    '''
+    This encoder predicts distributions then randomly samples them.
+    Regularization may be applied to the latent space output
+
+    a simple, fully convolutional architecture inspried by 
+        pjreddie's darknet architecture
+    https://github.com/pjreddie/darknet/blob/master/cfg/darknet19.cfg
+    '''
+    def __init__(self, inputShape=(256, 256, 3), batchSize=1,
+                 latentSize=1000, latentConstraints='bvae', beta=100., capacity=0.,
+                 randomSample=True):
+        '''
+        params
+        -------
+        latentConstraints : str
+            Either 'bvae', 'vae', or 'no'
+            Determines whether regularization is applied
+                to the latent space representation.
+        beta : float
+            beta > 1, used for 'bvae' latent_regularizer
+            (Unused if 'bvae' not selected, default 100)
+        capacity : float
+            used for 'bvae' to try to break input down to a set number
+                of basis. (e.g. at 25, the network will try to use 
+                25 dimensions of the latent space)
+            (unused if 'bvae' not selected)
+        randomSample : bool
+            whether or not to use random sampling when selecting from distribution.
+            if false, the latent vector equals the mean, essentially turning this into a
+                standard autoencoder.
+        '''
+        self.latentConstraints = latentConstraints
+        self.beta = beta
+        self.latentCapacity = capacity
+        self.randomSample = randomSample
+        super().__init__(inputShape, batchSize, latentSize)
+
+    def Build(self):
+        # create the input layer for feeding the netowrk
+        inLayer = Input(self.inputShape, self.batchSize)
+        
+        net = Reshape((-1,))(inLayer)
+        net = FullyConnectedRelu(1200*3)(net)
+        net = FullyConnectedRelu(1200*3)(net)
+        net = FullyConnectedRelu(1200*3)(net)
+
+        # variational encoder output (distributions)
+        mean = FullyConnectedRelu(self.latentSize, linear=True)(net)
+        # mean = Reshape((self.latentSize,))(mean)
+        stddev = FullyConnectedRelu(self.latentSize, linear=True)(net)
+        # stddev = Reshape((self.latentSize,))(stddev)
+
+        sample = SampleLayer(self.latentConstraints, self.beta,
+                            self.latentCapacity, self.randomSample)([mean, stddev])
+
+        return Model(inputs=inLayer, outputs=sample)
+
+class FCDecoder(Architecture):
+    def __init__(self, inputShape=(256, 256, 3), batchSize=1, latentSize=1000):
+        super().__init__(inputShape, batchSize, latentSize)
+
+    def Build(self):
+        # input layer is from GlobalAveragePooling:
+        inLayer = Input([self.latentSize], self.batchSize)
+        # reexpand the input from flat:
+        net = Reshape((self.latentSize,))(inLayer)
+        # darknet downscales input by a factor of 32, so we upsample to the second to last output shape:
+        # net = UpSampling2D((self.inputShape[0]//32, self.inputShape[1]//32))(net)
+
+        net = FullyConnectedRelu(1200*3)(net)
+        net = FullyConnectedRelu(1200*3)(net)
+        net = FullyConnectedRelu(1200*3)(net)
+        
+        # net = ConvBnLRelu(3, kernelSize=1)(net)
+        net = FullyConnectedRelu(self.inputShape[0]*self.inputShape[1]*self.inputShape[2], linear=True)(net)
+        net = Reshape(self.inputShape)(net)
+
+        return Model(inLayer, net)
 
 class BetaEncoder(Architecture):
     '''
@@ -549,9 +629,9 @@ def test():
     model_shape = (32, 32, 3)
     batchSize = 8
     latentSize = 16
-    d19e = BetaEncoder(model_shape, batchSize, latentSize, None)
+    d19e = FCEncoder(model_shape, batchSize, latentSize, None)
     d19e.model.summary()
-    d19d = BetaDecoder(model_shape, batchSize, latentSize)
+    d19d = FCDecoder(model_shape, batchSize, latentSize)
     d19d.model.summary()
 
 if __name__ == '__main__':
