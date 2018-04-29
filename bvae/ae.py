@@ -10,6 +10,14 @@ import tensorflow as tf
 from tensorflow.python.keras.models import Model
 from tensorflow.python.keras import backend as K
 
+import os
+import numpy as np
+from PIL import Image
+from tensorflow.python.keras.preprocessing.image import load_img
+import cv2
+import models
+import random
+
 class AutoEncoder(object):
     def __init__(self, encoderArchitecture, 
                  decoderArchitecture):
@@ -176,29 +184,39 @@ def test2():
             # pred = Image.fromarray(pred[0])
             # pred.show() # display popup
 
-def test3():
-    import os
-    import numpy as np
-    from PIL import Image
-    from tensorflow.python.keras.preprocessing.image import load_img
-    import cv2
-    import models
-    import random
+def convertImage(image, size=(128, 128)):
+    uint8Image = np.array(image, dtype=np.uint8)
+    if uint8Image.ndim > 3:
+        imgs = []
+        for i in range(uint8Image.shape[0]):
+            img = uint8Image[i]
+            pilImage = Image.fromarray(img)
+            resizedImage = pilImage.resize(size, resample=Image.NEAREST)
+            numpyImage = np.array(resizedImage, dtype=np.uint8)
+            imgs.append(numpyImage)
+        return np.array(imgs, dtype=np.uint8)
+    pilImage = Image.fromarray(uint8Image)
+    resizedImage = pilImage.resize(size, resample=Image.LANCZOS)
+    numpyImage = np.array(resizedImage, dtype=np.uint8)
+    return numpyImage
 
-    inputShape = (64, 64, 1)
+def test3():
+    inputShape = (128, 128, 3)
     batchSize = 32
-    latentSize = 10
+    latentSize = 20
     episodes = 10000
     verbose = 1
+    rescale = True
 
-    loadFolder = 'imageNet2'
-    loadFile = 'PtBetaEncoder-32px-128l-1000e'
+    loadFolder = 'Dsprite7_3'
+    loadFile = 'PtBetaEncoder-bvae-0_1-20l-1c-128px-10000e'
     load = False
-    saveFolder = 'Dsprite3_2'
-    saveFile = 'PtBetaEncoder-bvae-0_1-10l-20c-64px-10000e'
+    saveFolder = 'Dsprite7_3_1'
+    saveFile = 'PtBetaEncoder-bvae-0_1-20l-10c-128px-10000e'
     save = True
 
     useDsprites = True
+    useColor = True
 
     # C:\Users\slani\Documents\GitHub\montazuma\dataset\0000001.png
     # C:\Users\slani\Documents\GitHub\montazuma\dataset\1281149.png
@@ -236,7 +254,19 @@ def test3():
             if useDsprites:
                 imageNum = random.randrange(1, 737280)
                 img = dataImages[imageNum]
-                img = img*255
+                if useColor:
+                    randColor = np.array([random.random()*255, random.random()*255, random.random()*255], dtype=np.uint8)
+                    img = np.expand_dims(img, axis=2)
+                    img = np.repeat(img, 3, axis=2)
+                    # print("Before Img", img.shape)
+                    # print("Before randColor", randColor.shape)
+                    # img = np.matmul(img, randColor)
+                    img = img * randColor
+                    # print(inputShape[:2])
+                    img = convertImage(img, size=inputShape[:2])
+                    # print("After", img.shape, "dtype", img.dtype)
+                else:
+                    img = img*255
                 imgs.append(img)
             else:
                 imageNum = str(random.randrange(1, 1281150)).zfill(7)
@@ -247,15 +277,17 @@ def test3():
         if verbose == 1:
             batch_view = np.array(imgs, dtype=np.uint8)
             if useDsprites:
-                batch_view = np.expand_dims(batch_view, axis=3)
+                if not useColor:
+                    batch_view = np.expand_dims(batch_view, axis=3)
             print("batch.shape", batch_view.shape)
             visualize_batch = np.concatenate((*batch_view,), axis=1)
-            # visualize_batch = cv2.cvtColor(visualize_batch, cv2.COLOR_RGB2BGR)
+            if useColor:
+                visualize_batch = cv2.cvtColor(visualize_batch, cv2.COLOR_RGB2BGR)
             cv2.imshow("batch", visualize_batch)
             cv2.waitKey(1)
         
         batch = np.array(imgs, dtype=np.float32)
-        if useDsprites:
+        if useDsprites and not useColor:
             batch = np.expand_dims(batch, axis=3)
         batch = batch / 255 - 0.5
 
@@ -280,7 +312,7 @@ def test3():
             pred = np.uint8((pred + 0.5)* 255) # convert to regular image values
 
             visualize_pred = np.concatenate((*pred,), axis=1)
-            if not useDsprites:
+            if not useDsprites or useColor:
                 visualize_pred = cv2.cvtColor(visualize_pred, cv2.COLOR_RGB2BGR)
             visualize_both = np.concatenate((visualize_batch, visualize_pred), axis=0)
 
