@@ -159,10 +159,10 @@ class BetaEncoder(Architecture):
         inLayer = Input(self.inputShape, self.batchSize)
         net = ConvBnLRelu(32, kernelSize=3, strides=2)(inLayer)
         for i in range(int(math.log(self.inputShape[0],2)) - 1):
-            net = ConvBnLRelu(32, kernelSize=3, strides=2)(net)
+            net = ConvBnLRelu(32 * math.pow(2, i), kernelSize=3, strides=2)(net)
         
-        net = ConvBnLRelu(256, kernelSize=(self.inputShape[0]//32, self.inputShape[1]//32))(net)
-        net = ConvBnLRelu(256, kernelSize=(self.inputShape[0]//32, self.inputShape[1]//32))(net)
+        net = ConvBnLRelu(256, kernelSize=1)(net)
+        net = ConvBnLRelu(256, kernelSize=1)(net)
 
         # variational encoder output (distributions)
         mean = Conv2D(filters=self.latentSize, kernel_size=(1, 1),
@@ -189,12 +189,13 @@ class BetaDecoder(Architecture):
         # darknet downscales input by a factor of 32, so we upsample to the second to last output shape:
         # net = UpSampling2D((self.inputShape[0]//32, self.inputShape[1]//32))(net)
 
-        net = ConvBnLRelu(256, kernelSize=3)(net)
-        net = ConvBnLRelu(256, kernelSize=3)(net)
+        net = ConvBnLRelu(256, kernelSize=1)(net)
+        net = ConvBnLRelu(256, kernelSize=1)(net)
 
-        for i in range(int(math.log(self.inputShape[0],2))):
-            net = TransConvBnLRelu(32, kernelSize=3, strides=2)(net)
-        
+        power = int(math.log(self.inputShape[0],2)-1)
+        for i in range(power):
+            net = TransConvBnLRelu(32 * int(math.pow(2, power-i-1)), kernelSize=3, strides=2)(net)
+        net = TransConvBnLRelu(32, kernelSize=3, strides=2)(net)
         # net = ConvBnLRelu(3, kernelSize=1)(net)
         net = Conv2D(filters=self.inputShape[-1], kernel_size=(1, 1),
                       padding='same')(net)
