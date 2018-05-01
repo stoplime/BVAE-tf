@@ -123,12 +123,7 @@ class FCDecoder(Architecture):
 
 class BetaEncoder(Architecture):
     '''
-    This encoder predicts distributions then randomly samples them.
-    Regularization may be applied to the latent space output
-
-    a simple, fully convolutional architecture inspried by 
-        pjreddie's darknet architecture
-    https://github.com/pjreddie/darknet/blob/master/cfg/darknet19.cfg
+    
     '''
     def __init__(self, inputShape=(256, 256, 3), batchSize=1,
                  latentSize=1000, latentConstraints='bvae', beta=100., capacity=0.,
@@ -626,12 +621,12 @@ class Darknet53Encoder(Architecture):
 
 
 def test():
-    model_shape = (32, 32, 3)
+    model_shape = (512, 512, 3)
     batchSize = 8
-    latentSize = 16
-    d19e = FCEncoder(model_shape, batchSize, latentSize, None)
+    latentSize = 256
+    d19e = BetaEncoder(model_shape, batchSize, latentSize, None)
     d19e.model.summary()
-    d19d = FCDecoder(model_shape, batchSize, latentSize)
+    d19d = BetaDecoder(model_shape, batchSize, latentSize)
     d19d.model.summary()
 
 if __name__ == '__main__':
